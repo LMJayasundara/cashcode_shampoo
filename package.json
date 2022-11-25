@@ -1,0 +1,23 @@
+{
+  "name": "cashcode_shampoo",
+  "version": "1.0.0",
+  "description": "refill machine implement with cash note accepter",
+  "main": "Request.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Vega Innovation",
+  "license": "ISC",
+  "dependencies": {
+    "check-network-status": "^1.2.3",
+    "cors": "^2.8.5",
+    "download": "^8.0.0",
+    "express": "^4.18.2",
+    "node-wifi": "^2.0.16",
+    "request": "^2.88.2",
+    "serialport": "^10.5.0",
+    "sha1": "^1.1.1",
+    "socket.io": "^4.5.4"
+  }
+}

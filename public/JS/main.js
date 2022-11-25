@@ -885,7 +885,8 @@ $(document).ready(function() {
                     console.log("clicked");
                     startTimer(60);
                     hideAll();
-                    $("div#language-container").show();
+                    // $("div#language-container").show();
+                    $("div#selectProduct-container").show();
                     socket.emit("TAP", 1);
                 }, 100);
             });
@@ -1510,7 +1511,8 @@ function goBack(id) {
         selectedVolume = "0";
         if (id == "btnBackSelectProduct") {
             ipc_state = STATE_IDLE;
-            $("div#language-container").show();
+            // $("div#language-container").show();
+            $("div#tapToStart-container").show();
         }
         if (id == "btnBacklanguage") {
             ipc_state = STATE_IDLE;

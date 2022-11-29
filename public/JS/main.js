@@ -484,9 +484,152 @@ var barcodeInputHidden;
 var barcodeTimer = null;
 var selectedLanguage = "english";
 
+let btlVol = '';
+let defalut_timeout = 60;
+let stackState = null;
+
+/* Get cashcode device state */
+socket.on('Status', sts => {
+    /* Show index window */
+    if(sts.status != null){
+        document.getElementById("errWin").style.display = "none";
+        document.getElementById("status").innerHTML = sts.status;
+    }
+    // /* Get current state of windows */
+    // else if(sts.page != null ){
+    //     pageState = sts.page;
+    // }
+    /* Show error window */
+    else if(sts.error != null && (ipc_state == 00 || ipc_state == 01 || (ipc_state == 02 && stackState == null))){
+        hideAll();
+        redirectTimer(1);
+        clearVal();
+        document.getElementById("errWin").style.display = "block";
+        document.getElementById("error_msg").innerHTML = sts.error;
+    }
+    console.log("ipc_state:", ipc_state);
+
+    /* Update inner html content */
+    document.getElementById("amount").innerHTML = localStorage.getItem("Amount") || 0;
+    document.getElementById("total").innerHTML = localStorage.getItem("Total") || 0;
+    document.getElementById("refill").innerHTML = localStorage.getItem("Refill") || 0;
+});
+
+/* If stacked triggerd clear timout to redirect index window */
+socket.on('stacked', ()=>{
+    clearTimeout(r_timer);
+    stackState = 'stacked';
+});
+
+/* Store stacked amount */
+socket.on('Amount', amt => {
+    localStorage.setItem("Amount", amt);
+});
+
+/* Store total amount */
+socket.on('Total', ttl => {
+    localStorage.setItem("Total", ttl);
+});
+
+/* Store refill volume */
+socket.on('Refill', refill => {
+    localStorage.setItem("Refill", refill);
+});
+
+/* Genarete fake data */
+async function fackData(){
+    return new Promise((resolve,reject) => {
+        let amt = 0;
+        let fake_timmer;
+        fake_timmer = setInterval(() => {
+            amt += 1;
+            document.getElementById("divFillingAmount").innerHTML = amt;
+
+            if(localStorage.getItem("Total") <=  amt){
+                clearTimeout(fake_timmer);
+                setTimeout(() => {
+                    resolve();
+                }, 3000);
+            }
+        }, 1000);
+    });
+};
+
+/* Clear values */
+function clearVal(){
+    stackState = null;
+    socket.emit('Done');
+    localStorage.clear();
+}
+
+function numClickVol(num) {
+    clearTimeout(r_timer);
+    document.getElementById('showMaxAmt').style.display = 'block';
+    if (num == "OK") {
+        console.log(btlVol);
+        if (btlVol.length == 0) {
+            $("#idBtlVol").css({
+                "font-size": "30px",
+                color: "red"
+            });
+            $("#idBtlVol").text("Not a valid volume");
+        }
+        else{
+            if (btlVol < 10) {
+                btlVol = "";
+                $("#idBtlVol").css({
+                    "font-size": "30px",
+                    color: "red"
+                });
+                $("#idBtlVol").text("Enter 10ml at least!");
+            }
+            else {
+                socket.emit('maxAmt', btlVol);
+                /* Display max amount in sec3 */
+                document.getElementById("max").innerHTML = btlVol;
+                setTimeout(function() {
+                    btlVol = "";
+                    redirectTimer(defalut_timeout);
+                    hideAll();
+                    document.getElementById('showMaxAmt').style.display = 'none';
+                    $("div#printNotification-container").show();
+                    $("div#divAlertLayerSettings").hide();
+                    $("#idBtlVol").text("");
+                }, 100);
+            }
+        }
+    }
+    else if (num == "DELETE") {
+        $("#idBtlVol").css({
+            "font-size": "50px",
+            color: "black"
+        });
+        btlVol = btlVol.substring(0, btlVol.length - 1);
+
+        if(btlVol == 0){
+            redirectTimer(defalut_timeout);
+            $("#idBtlVol").text(`${btlVol}`);
+            document.getElementById('showMaxAmt').style.display = 'none';
+        }
+        else{
+            $("#idBtlVol").text(`${btlVol} ml`);
+        }
+    }
+    else{
+        $("#idBtlVol").css({
+            "font-size": "50px",
+            color: "black"
+        });
+        btlVol = btlVol + num;
+        $("#idBtlVol").text(`${btlVol} ml`);
+    }
+    document.getElementById('maxPayment').innerHTML = btlVol;
+}
+
 $(document).ready(function() {
     try {
         function connect() {
+            clearVal();
             socket.on("CONNECTED", function(data) {
                 if (data == "nice") {
                     ipc_state = STATE_IDLE;
@@ -494,7 +637,7 @@ $(document).ready(function() {
                     selectedVolume = "0";
                     hideAll();
                     $("div#tapToStart-container").show();
-                    // $("div#barcode-data-container").show();
+                    // $("div#selectVolume-container").show();
                     // $("div#barcode-data-container").show();
                     // $("div#barcode-data-view-container").show();
                     socket.emit("PRINTER_STATUS", 0);
@@ -689,6 +832,12 @@ $(document).ready(function() {
                 setTimeout(function() {
                     hideAll();
                     $("div#filling-container").show();
+
+                    /* Fake data simulate */
+                    fackData().then(()=>{
+                        changeStateTo('thankyou');
+                        clearVal();
+                    });
                 }, 100);
             });
 
@@ -699,6 +848,7 @@ $(document).ready(function() {
                     ipc_state = BUTTON_STOP;
                     console.log("ipc state when btn stop " + ipc_state);
                     stopFilling();
+                    clearVal();
                 }, 1000);
             });
 
@@ -860,7 +1010,7 @@ $(document).ready(function() {
 
             $("#btnDebug").on("click", function(evt) {
                 setTimeout(function() {
-                    startTimer(60);
+                    redirectTimer(defalut_timeout);
                     socket.emit("READ_ALL", 0);
                     passcode = "";
                     passcodeMask = "";
@@ -883,9 +1033,10 @@ $(document).ready(function() {
             $("#imgBtnTapToStart").on("click", function(evt) {
                 setTimeout(function() {
                     console.log("clicked");
-                    startTimer(60);
+                    redirectTimer(defalut_timeout);
                     hideAll();
                     // $("div#language-container").show();
+                    ipc_state = STATE_PORDUCT_SELECTION;
                     $("div#selectProduct-container").show();
                     socket.emit("TAP", 1);
                 }, 100);
@@ -895,7 +1046,7 @@ $(document).ready(function() {
                 setTimeout(function() {
                     console.log("clicked");
                     selectedLanguage = "english";
-                    startTimer(60);
+                    redirectTimer(defalut_timeout);
                     ipc_state = STATE_PORDUCT_SELECTION;
                     hideAll();
                     $("div#selectProduct-container").show();
@@ -907,7 +1058,7 @@ $(document).ready(function() {
                 setTimeout(function() {
                     console.log("clicked");
                     selectedLanguage = "bengali";
-                    startTimer(60);
+                    redirectTimer(defalut_timeout);
                     ipc_state = STATE_PORDUCT_SELECTION;
                     hideAll();
                     $("div#selectProduct-container").show();
@@ -951,9 +1102,10 @@ $(document).ready(function() {
                 }, 100);
             });
         }
-        console.log("ahdkjahdhiahfhadfhsdfsdfnnsdf");
         connect();
-    } catch (e) {}
+    } catch (e) {
+        console.log(e.message);
+    }
 });
 
 function hideAll() {
@@ -1021,8 +1173,7 @@ function numClick(num) {
         } else {
             ipc_state = STATE_SERVICE;
             setTimeout(function() {
-                startTimer(300);
-                clearTimeout(g_timer);
+                redirectTimer(300);
                 debugProduct = undefined;
                 hideAll();
                 $("div#settings-container").show();
@@ -1102,63 +1253,64 @@ function selectProduct(id) {
             selectedProductName = productName;
             selectedBatchCode = batchNo;
             console.log("AAAAAAAA         " + selectedBatchCode);
-            imgProductScreenLogo.src =
-                "images/product_images/logo" + productId + ".png";
-            imgProductScreenBottle.src =
-                "images/product_images/bottle" + productId + ".png";
-            var maximumDiscount = getMaximumDiscount(productDiscounts.split("/"));
-            if (maximumDiscount != 0) {
-                $("#productScreenLogoDiv").css({
-                    top: "5%"
-                });
-                idProductVolumeSave.style.display = "block";
-                idProductVolumeSave.innerHTML =
-                    "Save upto" + "<br/>" + "Rs. " + maximumDiscount;
-            } else {
-                $("#productScreenLogoDiv").css({
-                    top: "25%"
-                });
-                idProductVolumeSave.style.display = "none";
-            }
 
-            volumeList = productVolumes.split("/");
-            actualVolumeCount = volumeList.length;
-            validVolumeCount = getVolumeCount(productRemaining, volumeList);
-            //validVolumeCount = 6;
+            // imgProductScreenLogo.src =
+            //     "images/product_images/logo" + productId + ".png";
+            // imgProductScreenBottle.src =
+            //     "images/product_images/bottle" + productId + ".png";
+            // var maximumDiscount = getMaximumDiscount(productDiscounts.split("/"));
+            // if (maximumDiscount != 0) {
+            //     $("#productScreenLogoDiv").css({
+            //         top: "5%"
+            //     });
+            //     idProductVolumeSave.style.display = "block";
+            //     idProductVolumeSave.innerHTML =
+            //         "Save upto" + "<br/>" + "Rs. " + maximumDiscount;
+            // } else {
+            //     $("#productScreenLogoDiv").css({
+            //         top: "25%"
+            //     });
+            //     idProductVolumeSave.style.display = "none";
+            // }
 
-            divNoOfVolumes2.style.display = "none";
-            divNoOfVolumes3.style.display = "none";
-            divNoOfVolumes6.style.display = "none";
-            console.log("VOLUME COUNT " + validVolumeCount);
-            if (validVolumeCount < 3) {
-                show2Volumes();
-                if (validVolumeCount == 1) {
-                    vol2Row2.style.display = "none";
-                }
-            } else if (validVolumeCount < 4) {
-                show3Volumes();
-            } else {
-                show6Volumes();
-                switch (validVolumeCount) {
-                    case 4:
-                        vol6Row3.style.display = "none";
-                        break;
-                    case 5:
-                        vol6Row3Col2.style.display = "none";
-                        break;
-                }
-            }
+            // volumeList = productVolumes.split("/");
+            // actualVolumeCount = volumeList.length;
+            // validVolumeCount = getVolumeCount(productRemaining, volumeList);
+            // //validVolumeCount = 6;
 
-            setVolumeData(
-                productVolumes.split("/"),
-                productPrices.split("/"),
-                productDiscounts.split("/")
-            );
+            // divNoOfVolumes2.style.display = "none";
+            // divNoOfVolumes3.style.display = "none";
+            // divNoOfVolumes6.style.display = "none";
+            // console.log("VOLUME COUNT " + validVolumeCount);
+            // if (validVolumeCount < 3) {
+            //     show2Volumes();
+            //     if (validVolumeCount == 1) {
+            //         vol2Row2.style.display = "none";
+            //     }
+            // } else if (validVolumeCount < 4) {
+            //     show3Volumes();
+            // } else {
+            //     show6Volumes();
+            //     switch (validVolumeCount) {
+            //         case 4:
+            //             vol6Row3.style.display = "none";
+            //             break;
+            //         case 5:
+            //             vol6Row3Col2.style.display = "none";
+            //             break;
+            //     }
+            // }
+
+            // setVolumeData(
+            //     productVolumes.split("/"),
+            //     productPrices.split("/"),
+            //     productDiscounts.split("/")
+            // );
 
             ipc_state = STATE_VOLUME_SELECTION;
             isProductSelected = true;
 
-            startTimer(60);
+            redirectTimer(defalut_timeout);
             hideAll();
             imageBackgroundID.src = "images/bg-option.png";
             $("div#selectVolume-container").show();
@@ -1400,60 +1552,60 @@ function setVolumeData(productVolumes, productPrices, productDiscounts) {
     }
 }
 
-function selectVolume(id) {
-    console.log("IDDDDDDd " + id);
-    var volumeBackground = getVolumeBackgroundID(id);
-    volumeBackground.src = "images/bg-selected.png";
-    setTimeout(function() {
-        divSelectedProductLogo.src =
-            "images/product_images/logo" + productId + ".png";
-        divSelectedProductBottle.src =
-            "images/product_images/bottle" + productId + ".png";
-        switch (id) {
-            case 1:
-                selectedVolume = selectedProduct.productVolumes.split("/")[0];
-                selectedProductPrice = selectedProduct.productPrices.split("/")[0];
-                console.log(selectedVolume);
-                console.log(selectedProductPrice);
-                break;
-            case 2:
-                selectedVolume = selectedProduct.productVolumes.split("/")[1];
-                selectedProductPrice = selectedProduct.productPrices.split("/")[1];
-                console.log(selectedVolume);
-                console.log(selectedProductPrice);
-                break;
-            case 3:
-                selectedVolume = selectedProduct.productVolumes.split("/")[2];
-                selectedProductPrice = selectedProduct.productPrices.split("/")[2];
-                console.log(selectedVolume);
-                console.log(selectedProductPrice);
-                break;
-            case 4:
-                selectedVolume = selectedProduct.productVolumes.split("/")[3];
-                selectedProductPrice = selectedProduct.productPrices.split("/")[3];
-                console.log(selectedVolume);
-                console.log(selectedProductPrice);
-                break;
-            case 5:
-                selectedVolume = selectedProduct.productVolumes.split("/")[4];
-                selectedProductPrice = selectedProduct.productPrices.split("/")[4];
-                console.log(selectedVolume);
-                console.log(selectedProductPrice);
-                break;
-            case 6:
-                selectedVolume = selectedProduct.productVolumes.split("/")[5];
-                selectedProductPrice = selectedProduct.productPrices.split("/")[5];
-                console.log(selectedVolume);
-                console.log(selectedProductPrice);
-                break;
-        }
-        setDataInPrintNotificationUI();
-        startTimer(60);
-        hideAll();
-        volumeBackground.src = "images/bg-option.png";
-        $("div#printNotification-container").show();
-    }, 100);
-}
+// function selectVolume(id) {
+//     console.log("IDDDDDDd " + id);
+//     var volumeBackground = getVolumeBackgroundID(id);
+//     volumeBackground.src = "images/bg-selected.png";
+//     setTimeout(function() {
+//         divSelectedProductLogo.src =
+//             "images/product_images/logo" + productId + ".png";
+//         divSelectedProductBottle.src =
+//             "images/product_images/bottle" + productId + ".png";
+//         switch (id) {
+//             case 1:
+//                 selectedVolume = selectedProduct.productVolumes.split("/")[0];
+//                 selectedProductPrice = selectedProduct.productPrices.split("/")[0];
+//                 console.log(selectedVolume);
+//                 console.log(selectedProductPrice);
+//                 break;
+//             case 2:
+//                 selectedVolume = selectedProduct.productVolumes.split("/")[1];
+//                 selectedProductPrice = selectedProduct.productPrices.split("/")[1];
+//                 console.log(selectedVolume);
+//                 console.log(selectedProductPrice);
+//                 break;
+//             case 3:
+//                 selectedVolume = selectedProduct.productVolumes.split("/")[2];
+//                 selectedProductPrice = selectedProduct.productPrices.split("/")[2];
+//                 console.log(selectedVolume);
+//                 console.log(selectedProductPrice);
+//                 break;
+//             case 4:
+//                 selectedVolume = selectedProduct.productVolumes.split("/")[3];
+//                 selectedProductPrice = selectedProduct.productPrices.split("/")[3];
+//                 console.log(selectedVolume);
+//                 console.log(selectedProductPrice);
+//                 break;
+//             case 5:
+//                 selectedVolume = selectedProduct.productVolumes.split("/")[4];
+//                 selectedProductPrice = selectedProduct.productPrices.split("/")[4];
+//                 console.log(selectedVolume);
+//                 console.log(selectedProductPrice);
+//                 break;
+//             case 6:
+//                 selectedVolume = selectedProduct.productVolumes.split("/")[5];
+//                 selectedProductPrice = selectedProduct.productPrices.split("/")[5];
+//                 console.log(selectedVolume);
+//                 console.log(selectedProductPrice);
+//                 break;
+//         }
+//         setDataInPrintNotificationUI();
+//         startTimer(60);
+//         hideAll();
+//         volumeBackground.src = "images/bg-option.png";
+//         $("div#printNotification-container").show();
+//     }, 100);
+// }
 
 function getVolumeBackgroundID(id) {
     console.log("IDDD " + id);
@@ -1490,12 +1642,12 @@ function getVolumeBackgroundID(id) {
     }
 }
 
-function setDataInPrintNotificationUI() {
-    divSelectedVolumePrice.innerHTML = selectedProductPrice;
-    divConfirmedPrice.innerHTML = "Rs. " + selectedProductPrice;
-    divConfirmedVolume.innerHTML = selectedVolume + " ml";
-    divSelectedVolume.innerHTML = selectedVolume + " ml";
-}
+// function setDataInPrintNotificationUI() {
+//     divSelectedVolumePrice.innerHTML = selectedProductPrice;
+//     divConfirmedPrice.innerHTML = "Rs. " + selectedProductPrice;
+//     divConfirmedVolume.innerHTML = selectedVolume + " ml";
+//     divSelectedVolume.innerHTML = selectedVolume + " ml";
+// }
 
 function onClickTxtBarcode() {
     // document.getElementById("txtBarcodeID").classList.add("keyboardPopup");
@@ -1503,9 +1655,13 @@ function onClickTxtBarcode() {
 }
 
 function goBack(id) {
+    btlVol = "";
+    $("#idBtlVol").text(`${btlVol}`);
+    document.getElementById('showMaxAmt').style.display = 'none';
+
     setTimeout(function() {
         hideAll();
-        startTimer(60);
+        redirectTimer(defalut_timeout);
         console.log(id);
         selected_nozzel_number = "0";
         selectedVolume = "0";
@@ -1577,68 +1733,79 @@ function confirmation(id) {
         btnNextImage.src = "images/bg-selected.png";
     }
     setTimeout(function() {
-        startTimer(60);
+        redirectTimer(defalut_timeout);
         console.log("printer status : " + printerStatus);
         if (id == "btnDecline") {
-            ipc_state = STATE_PORDUCT_SELECTION;
-            selected_nozzel_number = "0";
-            selectedVolume = "0";
-            isProductSelected = false;
-            hideAll();
-            $("div#selectProduct-container").show();
+            if(stackState == null){
+                ipc_state = STATE_PORDUCT_SELECTION;
+                selected_nozzel_number = "0";
+                selectedVolume = "0";
+                isProductSelected = false;
+                hideAll();
+                $("div#selectProduct-container").show();
+            }
         } else if (id == "btnConfirm") {
-            clearTimeout(g_timer);
-            var barcode;
-            var plastic;
-            var belowCode;
-            // if (selectedProductName == "Sunlight_Care" && selectedVolume == "500")
-            // {
-            //   barcode = "SLC1L";
-            //   plastic = plastic500;
-            //   belowCode = "H___H___E___0___1___7___6";
-            // }
-            // else if (selectedProductName == "Sunlight_Care" && selectedVolume == "1000")
-            // {
-            //   barcode = "SLC1L";
-            //   plastic = plastic1000;
-            //   belowCode = "H___H___E___0___1___7___6";
-            // }
-            // else if (selectedProductName == "Vim")
-            // {
-            //   barcode = "VIM05";
-            //   plastic = plasticVim;
-            //   belowCode = "H___H___E___0___1___7___4";
-            // }
-            // else if (selectedProductName == "Vim_Anti_Bacterial")
-            // {
-            //   barcode = "VIMAB";
-            //   plastic = "40";
-            //   belowCode = "H___H___E___0___1___7___5";
-            // }
+            if(stackState == 'stacked'){
+                clearTimeout(r_timer);
+                var barcode;
+                var plastic;
+                var belowCode;
+                // if (selectedProductName == "Sunlight_Care" && selectedVolume == "500")
+                // {
+                //   barcode = "SLC1L";
+                //   plastic = plastic500;
+                //   belowCode = "H___H___E___0___1___7___6";
+                // }
+                // else if (selectedProductName == "Sunlight_Care" && selectedVolume == "1000")
+                // {
+                //   barcode = "SLC1L";
+                //   plastic = plastic1000;
+                //   belowCode = "H___H___E___0___1___7___6";
+                // }
+                // else if (selectedProductName == "Vim")
+                // {
+                //   barcode = "VIM05";
+                //   plastic = plasticVim;
+                //   belowCode = "H___H___E___0___1___7___4";
+                // }
+                // else if (selectedProductName == "Vim_Anti_Bacterial")
+                // {
+                //   barcode = "VIMAB";
+                //   plastic = "40";
+                //   belowCode = "H___H___E___0___1___7___5";
+                // }
 
-            barcode = "VIMAB";
-            plastic = "40";
-            belowCode = "H___H___E___0___1___7___5";
+                divConfirmedPrice.innerHTML = `${localStorage.getItem("Total")} Rs`;
+                divConfirmedVolume.innerHTML = `${localStorage.getItem("Refill")} ml`;
 
-            var obj = {
-                productName: selectedProductName,
-                quantity: selectedVolume,
-                price: selectedProductPrice,
-                date: dateGenerate(),
-                barcode: barcode,
-                plastic: plastic,
-                belowCode: belowCode,
-                batchCode: selectedBatchCode,
-            };
-            console.log(obj);
-            socket.emit("PRINT_TICKET", obj);
-            hideAll();
-            $("div#printReceipt-container").show();
-            // $("div#refillGuide-container").show();
-            // $('div#selectProduct-container').show();
-            // isProductSelected = false;
+    
+                barcode = "VIMAB";
+                plastic = "40";
+                belowCode = "H___H___E___0___1___7___5";
+    
+                var obj = {
+                    productName: selectedProductName,
+                    quantity: localStorage.getItem("Refill"),
+                    price: localStorage.getItem("Total"),
+                    date: dateGenerate(),
+                    barcode: barcode,
+                    plastic: plastic,
+                    belowCode: belowCode,
+                    batchCode: selectedBatchCode,
+                };
+                console.log(obj);
+                socket.emit("PRINT_TICKET", obj);
+                hideAll();
+                $("div#printReceipt-container").show();
+                // $("div#refillGuide-container").show();
+                // $('div#selectProduct-container').show();
+                // isProductSelected = false;
+            }
+            else{
+                redirectTimer(defalut_timeout);
+                alert("Enter Cash to Proceed!");
+            }
         } else if (id == "btnNext") {
-            ipc_state = STATE_VOLUME_CONFIRMATION;
             ipc_state = STATE_VOLUME_CONFIRMATION;
             switch (parseInt(selected_nozzel_number.toString(), 10)) {
                 case 1:
@@ -1666,7 +1833,8 @@ function confirmation(id) {
                     divRefilGuideImg.src = "images/nobe6.gif";
                     break;
             }
-            startTimer(120);
+            // redirectTimer(defalut_timeout);
+            clearTimeout(r_timer);
             hideAll();
             $("div#refillGuide-container").show();
         }
@@ -2651,26 +2819,26 @@ function getMinimumVolume(volumes) {
     return minVolume;
 }
 
-function startTimer(time) {
-    clearTimeout(g_timer);
-    console.log("timer stared1");
-    g_timer = window.setTimeout(function() {
-        console.log("timer executed");
-        isProductSelected = false;
-        ipc_state = STATE_PORDUCT_SELECTION;
-        selected_nozzel_number = "0";
-        selectedVolume = "0";
-        easy_numpad_close();
-        hideAll();
-        $("div#tapToStart-container").show();
-    }, time * 1000);
-}
+// function startTimer(time) {
+//     clearTimeout(g_timer);
+//     console.log("timer stared1");
+//     g_timer = setTimeout(function() {
+//         console.log("timer executed");
+//         isProductSelected = false;
+//         ipc_state = STATE_PORDUCT_SELECTION;
+//         selected_nozzel_number = "0";
+//         selectedVolume = "0";
+//         easy_numpad_close();
+//         hideAll();
+//         $("div#tapToStart-container").show();
+//     }, time * 1000);
+// }
 
 function redirectTimer(time) {
     clearTimeout(r_timer);
-    console.log("timer stared2");
-    r_timer = window.setTimeout(function() {
-        console.log("timer executedxx");
+    console.log("timer stared");
+    r_timer = setTimeout(function() {
+        console.log("timer executed");
         hideAll();
         $("div#tapToStart-container").show();
         ipc_state = STATE_IDLE;

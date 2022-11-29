@@ -10,6 +10,7 @@
   "author": "Vega Innovation",
   "license": "ISC",
   "dependencies": {
+    "cashcode-nodejs": "^1.0.7",
     "check-network-status": "^1.2.3",
     "cors": "^2.8.5",
     "download": "^8.0.0",

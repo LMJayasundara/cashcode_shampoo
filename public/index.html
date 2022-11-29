@@ -18,6 +18,12 @@
       overflow: hidden;
       ">
       <div class="container1">
+         <div id="errWin" style="display: none;" class="text-center container1">
+            <div style="padding-top: 40%;">
+               <h1 class="fw-bold">Error!</h1>
+               <h2><span id="error_msg"></span></h2>
+            </div>
+         </div>
          <div id="loading-container" class="container1" style="display: block">
             <img src="images/background_logo.png" alt="Snow" class="img-class" />
             <div id="loading" onclick="">
@@ -1998,6 +2004,40 @@
             <div class="select-text" style="top: 4%; font-size: 40px; width: auto; left: 20%">
                Select the volume required
             </div>
+
+            <div class="select-text" style="top: 15%;">Enter Bottle Volume</div>
+            <div id="idBtlVol" class="numberField"></div>
+            <!-- <input id="idBtlVol" class="numberField" oninput="calprice()"> -->
+
+            <div class="numberPad">
+               <div class="grid-item" onclick="numClickVol('1')">1</div>
+               <div class="grid-item" onclick="numClickVol('2')">2</div>
+               <div class="grid-item" onclick="numClickVol('3')">3</div>
+               <div class="grid-item" onclick="numClickVol('4')">4</div>
+               <div class="grid-item" onclick="numClickVol('5')">5</div>
+               <div class="grid-item" onclick="numClickVol('6')">6</div>
+               <div class="grid-item" onclick="numClickVol('7')">7</div>
+               <div class="grid-item" onclick="numClickVol('8')">8</div>
+               <div class="grid-item" onclick="numClickVol('9')">9</div>
+               <div class="grid-item" onclick="numClickVol('DELETE')">
+                  <img src="images/ic-delete.png" alt="Snow"
+                     class="streach-img"
+                     style="padding-left: 15%; padding-right: 30%; height: 60%" />
+               </div>
+               <div class="grid-item" onclick="numClickVol('0')">0</div>
+               <div class="grid-item" onclick="numClickVol('OK')">OK</div>
+            </div>
+
+            <div id="showMaxAmt" class="select-text text-center" style="top: 83%; font-size: 40px; display: none;">
+               Payable max amount: <span id="maxPayment">0</span> Rs
+            </div>
+         </div>
+         <!-- <div id="selectVolume-container" class="container1 noselect" style="display: none">
+            <div id="btnBackSelectVolume" onclick="goBack(btnBackSelectVolume.id)" class="button-back"></div>
+            <img id="imgBtn" src="images/background_logo.png" alt="Snow" class="streach-img-no-border" />
+            <div class="select-text" style="top: 4%; font-size: 40px; width: auto; left: 20%">
+               Select the volume required
+            </div>
             <div class="volume-title">
                <div id="productScreenLogoDiv" class="product-screen-logo">
                   <img id="productScreenLogo" src="images/product_images/logo1.png" class="streach-img" alt="Snow" />
@@ -2348,8 +2388,39 @@
                   </div>
                </div>
             </div>
+         </div> -->
+
+         <div id="printNotification-container" class="container1 noselect" style="display: none">
+            <img src="images/background_logo.png" alt="Snow"
+            class="streach-img-no-border" />
+            <div class="select-text">Enter Your Cash</div>
+
+            <div class="select-text" style="padding-top: 40%;">
+               <h1>Device Status: <span id="status"></span></h1>
+               <br>
+               <h1>Max Amount You Can Pay: <span id="max">0</span> Rs</h1>
+               <h1>Stacked Amount: <span id="amount">0</span> Rs</h1>
+               <h1>Total Amount: <span id="total">0</span> Rs</h1>
+               <h1>Refill Volume: <span id="refill">0</span> ml</h1>
+            </div>
+
+            <div class="accept-layer" style="width: 100%; height: 100px">
+               <div id="btnDecline" class="img-decline"
+                  onclick="confirmation(btnDecline.id)">
+                  <img id="btnDeclineImage" src="images/bg-button.png"
+                     alt="Snow" class="streach-img box-shadow" />
+                  <div class="text-decline">DECLINE</div>
+               </div>
+               <div id="btnConfirm" class="img-accept"
+                  onclick="confirmation(btnConfirm.id)">
+                  <img id="btnConfirmImage" src="images/bg-button.png"
+                     alt="Snow" class="streach-img box-shadow" />
+                  <div class="text-accept">CONFIRM</div>
+               </div>
+            </div>
          </div>
-         <div id="printNotification-container"
+
+         <!-- <div id="printNotification-container"
             class="container1 noselect" style="display: none">
             <img src="images/background_logo.png" alt="Snow"
                class="streach-img-no-border" />
@@ -2394,7 +2465,8 @@
                   <div class="text-accept">CONFIRM</div>
                </div>
             </div>
-         </div>
+         </div> -->
+
          <div id="printReceipt-container" class="container1 noselect"
             style="display: none">
             <img src="images/background_logo.png" alt="Snow"
@@ -2461,7 +2533,7 @@
                   </div>
                   <img src="images/bg-option.png" alt="Snow"
                      class="streach-img" />
-                  <div class="filling-text text-value" style="left: 80%">ml
+                  <div class="filling-text text-value" style="left: 80%">Rs
                   </div>
                </div>
             </div>

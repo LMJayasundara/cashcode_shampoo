@@ -96,23 +96,23 @@ wifi.init({
 let total = 0;
 let maxAmtx = 0;
 
-const device = new BillValidator({
-    baudRate: 19200,
-    autoPort: true,
-    boardKeywordIdentifier: 'FTDI'
-});
+// const device = new BillValidator({
+//     baudRate: 19200,
+//     autoPort: true,
+//     boardKeywordIdentifier: 'FTDI'
+// });
 
-function getTotal(cash) {
-    total = total + cash;
-    return total;
-};
+// function getTotal(cash) {
+//     total = total + cash;
+//     return total;
+// };
   
-function reset(){
-    total = 0;
-};
+// function reset(){
+//     total = 0;
+// };
 
 (async function () {
-    await device.connect();
+    // await device.connect();
 
     io.sockets.on("connection", function (socket) {
         console.log("connected");
@@ -438,116 +438,116 @@ function reset(){
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        socket.on('maxAmt', (maxAmt) => {
-            maxAmtx = maxAmt;
-            console.log("maxAmt:", maxAmtx);
-        });
+        // socket.on('maxAmt', (maxAmt) => {
+        //     maxAmtx = maxAmt;
+        //     console.log("maxAmt:", maxAmtx);
+        // });
 
-        socket.on('Done', () => {
-            reset();
-        });
+        // socket.on('Done', () => {
+        //     reset();
+        // });
 
-        socket.on('Page', (page) => {
-            pageState = page;
-            socket.emit('Status', {
-                "page": page
-            });
-        });
+        // socket.on('Page', (page) => {
+        //     pageState = page;
+        //     socket.emit('Status', {
+        //         "page": page
+        //     });
+        // });
     });
 
-    device.on('error', (error) => {
-        io.emit('Status', {
-            "error": error
-        });
-    });
+    // device.on('error', (error) => {
+    //     io.emit('Status', {
+    //         "error": error
+    //     });
+    // });
 
-    device.on('powerup', function () {
-        io.emit('Status', {
-            "status": 'Device power up'
-        });
-    });
+    // device.on('powerup', function () {
+    //     io.emit('Status', {
+    //         "status": 'Device power up'
+    //     });
+    // });
 
-    device.on('reset', function () {
-        io.emit('Status', {
-            "status": 'Device reset'
-        });
-    });
+    // device.on('reset', function () {
+    //     io.emit('Status', {
+    //         "status": 'Device reset'
+    //     });
+    // });
 
-    device.on('initialize', () => {
-        io.emit('Status', {
-            "status": "Device initialize"
-        });
-    });
+    // device.on('initialize', () => {
+    //     io.emit('Status', {
+    //         "status": "Device initialize"
+    //     });
+    // });
 
-    device.on("idling", () => {
-        io.emit('Status', {
-            "status": "Device on idle state"
-        });
-    });
+    // device.on("idling", () => {
+    //     io.emit('Status', {
+    //         "status": "Device on idle state"
+    //     });
+    // });
 
-    device.on('cassetteRemoved', () => {
-        reset();
-        io.emit('Status', {
-            "error": "Cassette removed"
-        });
-    });
+    // device.on('cassetteRemoved', () => {
+    //     reset();
+    //     io.emit('Status', {
+    //         "error": "Cassette removed"
+    //     });
+    // });
 
-    device.on('cassetteFull', () => {
-        io.emit('Status', {
-            "error": "Cassette full"
-        });
-    });
+    // device.on('cassetteFull', () => {
+    //     io.emit('Status', {
+    //         "error": "Cassette full"
+    //     });
+    // });
 
-    device.on('hold', () => {
-        io.emit('Status', {
-            "error": "Device on hold"
-        });
-    });
+    // device.on('hold', () => {
+    //     io.emit('Status', {
+    //         "error": "Device on hold"
+    //     });
+    // });
 
-    device.on('returned', (cash) => {
-        console.log("Returned", cash.amount);
-    });
+    // device.on('returned', (cash) => {
+    //     console.log("Returned", cash.amount);
+    // });
 
-    device.on('accepting', async () => {
-        console.log('accepting');
-    });
+    // device.on('accepting', async () => {
+    //     console.log('accepting');
+    // });
 
-    device.on('escrow', async (cash) => {
-        total = getTotal(cash.amount);
-        try {
-            if (total > maxAmtx) {
-                total = total - cash.amount;
-                await device.retrieve();
-            }
-            else {
-                await device.stack();
+    // device.on('escrow', async (cash) => {
+    //     total = getTotal(cash.amount);
+    //     try {
+    //         if (total > maxAmtx) {
+    //             total = total - cash.amount;
+    //             await device.retrieve();
+    //         }
+    //         else {
+    //             await device.stack();
 
-                /* Emit current total amount */
-                io.emit('Total', total);
-                /* Emit available refill voulume */
-                io.emit('Refill', total);
-                /* Emit stacked amount */
-                io.emit('Amount', cash.amount);
-            }
-        } catch (error) {
-            io.emit('Status', {
-                "error": error.message
-            });
-        }
-    });
+    //             /* Emit current total amount */
+    //             io.emit('Total', total);
+    //             /* Emit available refill voulume */
+    //             io.emit('Refill', total);
+    //             /* Emit stacked amount */
+    //             io.emit('Amount', cash.amount);
+    //         }
+    //     } catch (error) {
+    //         io.emit('Status', {
+    //             "error": error.message
+    //         });
+    //     }
+    // });
 
-    device.on('stacked', (cash) => {
-        io.emit('stacked');
-        try {
-            io.emit('Status', {
-                "status": `Stacked ${cash.amount} Rs`
-            });
-        } catch (error) {
-            io.emit('Status', {
-                "error": error.message
-            });
-        }
-    });
+    // device.on('stacked', (cash) => {
+    //     io.emit('stacked');
+    //     try {
+    //         io.emit('Status', {
+    //             "status": `Stacked ${cash.amount} Rs`
+    //         });
+    //     } catch (error) {
+    //         io.emit('Status', {
+    //             "error": error.message
+    //         });
+    //     }
+    // });
 
 })();
 
